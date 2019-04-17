@@ -26,6 +26,13 @@ The goals / steps of this project are the following:
 [image5]: ./examples/color_fit_lines.jpg "Fit Visual"
 [image6]: ./examples/example_output.jpg "Output"
 [video1]: ./project_video.mp4 "Video"
+[undistortedImage]: ./output_images/unidstort1.png "Undistorted"
+[road_undistorted]: ./output_images/road_undistorted.png "Undistorted Road Image"
+[BinaryImage]: ./output_images/BinaryImage.jpg "Binary Road Images"
+[challengeBinary_NOK1]: ./output_images/challengeBinary_NOK1.jpg "NOK Challenge Road Image 1"
+[challengeBinary_NOK2]: ./output_images/challengeBinary_NOK2.jpg "NOK Challenge Road Image 2"
+[Birds_eye.jpg]: ./output_images/Birds_eye.jpg "Birds Eye Transform"
+[lane_lines_poly.jpg]: ./output_images/lane_lines_poly.jpg "Left and Right Lane Line polynomial fitting" 
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -43,11 +50,18 @@ You're reading it!
 
 #### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
 
-The code for this step is contained in the first code cell of the IPython notebook located in "./examples/example.ipynb" (or in lines # through # of the file called `some_file.py`).  
+The followed the principles outlined to perform a calibration on the camera and correct lens distortion factor.
 
-I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
+(1)   I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
 
-I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
+(2) Use OpenCv function  `cv2.findChessboardCorners(gray, (nx,ny), None)` and pass in my grayscale converted chessboard images (`gray`), including the number of corners I expect in the x direction (`nx`) and the number of corners I expect in the y direction (`ny`)
+Note that calibration images indexed {1,4,5,20} could not be undistorted using the 9x6 inner corner definition because the outermost corners either extended beyond the photo (or where at the image boundary)
+
+(3) Use OpenCv function  `cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None) `.  As described in the openCV documentation [here] (https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html).  The function uses a pin-hole camera model to return the camera matrix, distortion coefficients, output vector of rotation for each chessboard patern, and the output vector for tranlation required to consequently undistort the image.
+
+Refer to [undistortedImage]
+
+
 
 ![alt text][image1]
 
@@ -55,50 +69,78 @@ I then used the output `objpoints` and `imgpoints` to compute the camera calibra
 
 #### 1. Provide an example of a distortion-corrected image.
 
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
+Test image 4 is a good example to show the undistortion beign applied to the original image. The white car originaly was in complete view in the image, however after the undistortion function it is translated such that it's rear is clipped in the image.
 ![alt text][image2]
+![alt text][road_undistorted]
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+I used a combination of color and gradient thresholds to generate a binary image.
+
+(1) Colour transformation to HLS image space. This was recommended in the course as being a robust 
+(2) Applying a Sobel gradient threshold (for x-direction)
+(3) Applying threshold Saturation Channel
+
+Refer to function definition `thresholdHLS(image, s_thresh=(130, 255), sx_thresh=(40, 100))` for details.
+
+I would describe my implementation as minimal, but it still robus to identify the lane pixels in the test images.
+
+Testing this function out with the the challenge video images, it's clear that some further work here needs to be done especially when there is a gradient between the "road" and variable lighting conditions. I will have to explore thresholding on the L channel also and combining it with teh sobel thresholding.
+
+The algorithm was effective for the test images.
+![BinaryImage]: ./output_images/BinaryImage.jpg "Binary Road Images"
+
+The algorithm was not effective for the challenge images.
+![challengeBinary_NOK1]: ./output_images/challengeBinary_NOK1.jpg "NOK Challenge Road Image 1"
+![challengeBinary_NOK2]: ./output_images/challengeBinary_NOK2.jpg "NOK Challenge Road Image 2"
 
 ![alt text][image3]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+I used the openCV functions `getPerspectiveTransform(src,dst)`, and `cv2.warpPerspective(undistortedRoad, M, (nx,ny))` to obtain the "bird's eye view" transformation of the road. 
 
-```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
-```
+I explored the idea of drawing grid lines first test images to narrow down the scope of the vertices used for the transformation.
+I opted for the top vertices to be under the horizon and allow enough margin around the 1200 pixel mark. 
 
-This resulted in the following source and destination points:
+However this was not robust for the challenge video.  There was more curvature,  elevation in the road, and the vehicle was in an outer lane. So I will need to look my source point definition and decide whether this should be fixed. 
 
-| Source        | Destination   | 
-|:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+I chose to hardcode the source and destination points as below:
+
+`src = np.float32([    
+    [585, 455],[705, 455], [1130, 720], [190, 720]
+])
+
+pixel_offset = 190   
+nx = img.shape[1]
+ny = img.shape[0]
+
+print(nx)
+print(ny)
+
+dst = np.float32([
+    [pixel_offset, 0],
+    [nx - pixel_offset, 0],
+    [nx -  pixel_offset, ny], 
+    [pixel_offset, ny] 
+])`
+
+
+![Birds_eye.jpg]: ./output_images/Birds_eye.jpg "Birds Eye Transform"
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![alt text][image4]
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+I followed the logic outlined in the course, and that was to segment the image into sliding windows. Then used the numpy function `np.polyfit` to fit a line on the detected line pixels for the left lane line and the right lane line.
 
-![alt text][image5]
+Refer to `find_lane_pixels(binary_warped):` and ` def fit_polynomial(binary_warped):` in `CARND-Advanced_Lane_Lines.ipyn` notebook.
+
+[lane_lines_poly.jpg]: ./output_images/lane_lines_poly.jpg "Left and Right Lane Line polynomial fitting" 
+
+I explored different implementations here (refer to `def find_window_centroids(image, window_width, window_height, window_margin):` and 
+`def search_around_poly(binary_warped):` functions in line 118 and line 122.
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 

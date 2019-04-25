@@ -38,7 +38,7 @@ The goals / steps of this project are the following:
 [thresholding]: ./output_images/thresholding.jpg "Thresholding Example"
 
 [Birds_eye.jpg]: ./output_images/Birds_eye.jpg "Birds Eye Transform"
-[lane_lines_poly.jpg]: ./output_images/lane_lines_poly.jpg "Left and Right Lane Line polynomial fitting"
+[lane_lines_poly]: ./output_images/lane_lines_poly.jpg "Left and Right Lane Line polynomial fitting"
 [perspective_transform_src]: ./output_images/perspective_transform_src.jpg "Perspective Transform - src"
 [warped_image]: ./output_images/warped_image.jpg "Warped perspective of road lanes"
 [find_lane_pixels_histogram]: ./output_images/find_lane_pixels_histogram.jpg "find lane pixels - histogram "
@@ -139,14 +139,11 @@ I explored different implementations here (refer to `def find_window_centroids(i
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
 Refer to `def measure_curvature_real(left_fit, right_fit, image_width, image_height) :`
-Refer to 'https://www.intmath.com/applications-differentiation/8-radius-curvature.php'
+I referenced the website mentioned in the lecture material 'https://www.intmath.com/applications-differentiation/8-radius-curvature.php'
 
 The calculations were converted to meters.
 `ym_per_pix =30./720  `
 `xm_per_pix = 3.5/417` The U.S lane width regulation is upto 3.7m  I measured the pixel distance from left and right lines to be 417pixels.
-
-![lane_lines_poly][lane_lines_poly]
-
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
@@ -155,7 +152,7 @@ Refer to `def draw_lane(original_img, binary_img, l_fit, r_fit, Minv):` and `def
 
 Note this time I used the inverse matrix `Minv` to transform the image back to the road image view.
 
-![annotated_unwarped_road][annotated_unwarped_road.jpg]
+![annotated_unwarped_road][annotated_unwarped_road]
 
 ---
 

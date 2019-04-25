@@ -28,11 +28,23 @@ The goals / steps of this project are the following:
 [video1]: ./project_video.mp4 "Video"
 [undistortedImage]: ./output_images/unidstort1.png "Undistorted"
 [road_undistorted]: ./output_images/road_undistorted.png "Undistorted Road Image"
+[undistorted_chessboards]:  ./output_images/undistorted_chessboards.jpg "Undistorted Chessboards Example"
+
 [BinaryImage]: ./output_images/BinaryImage.jpg "Binary Road Images"
 [challengeBinary_NOK1]: ./output_images/challengeBinary_NOK1.jpg "NOK Challenge Road Image 1"
 [challengeBinary_NOK2]: ./output_images/challengeBinary_NOK2.jpg "NOK Challenge Road Image 2"
+[challenge_frames]: ./output_images/challenge_frames.jpg "Challenge Lighting road frames"
+
+[thresholding]: ./output_images/thresholding.jpg "Thresholding Example"
+
 [Birds_eye.jpg]: ./output_images/Birds_eye.jpg "Birds Eye Transform"
-[lane_lines_poly.jpg]: ./output_images/lane_lines_poly.jpg "Left and Right Lane Line polynomial fitting" 
+[lane_lines_poly.jpg]: ./output_images/lane_lines_poly.jpg "Left and Right Lane Line polynomial fitting"
+[perspective_transform_src]: ./output_images/perspective_transform_src.jpg "Perspective Transform - src"
+[warped_image]: ./output_images/warped_image.jpg "Warped perspective of road lanes"
+[find_lane_pixels_histogram]: ./output_images/find_lane_pixels_histogram.jpg "find lane pixels - histogram "
+[annotated_unwarped_road]: ./output_images/annotated_unwarped_road.jpg "Unwarped Road Image with annotations "
+
+[project_video_out]: ./project_video_out.mp4 "Project Video Output "
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -59,42 +71,35 @@ Note that calibration images indexed {1,4,5,20} could not be undistorted using t
 
 (3) Use OpenCv function  `cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None) `.  As described in the openCV documentation [here] (https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html).  The function uses a pin-hole camera model to return the camera matrix, distortion coefficients, output vector of rotation for each chessboard patern, and the output vector for tranlation required to consequently undistort the image.
 
-Refer to [undistortedImage]
-
-
-
-![alt text][image1]
+Refer to ![undistorted_chessboards][undistorted_chessboards]
 
 ### Pipeline (single images)
 
 #### 1. Provide an example of a distortion-corrected image.
 
 Test image 4 is a good example to show the undistortion beign applied to the original image. The white car originaly was in complete view in the image, however after the undistortion function it is translated such that it's rear is clipped in the image.
-![alt text][image2]
-![alt text][road_undistorted]
+![road_undistorted][road_undistorted]
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
 I used a combination of color and gradient thresholds to generate a binary image.
 
-(1) Colour transformation to HLS image space. This was recommended in the course as being a robust 
-(2) Applying a Sobel gradient threshold (for x-direction)
-(3) Applying threshold Saturation Channel
+combined_threshold_image = thresh_colour2(undistortedRoad)
+(1) Colour transformation to HLS image space. This was recommended in the course as being a robust -> filter for white and yellow lines. then returned a masked image (not binary image) for use in text threshold operation.  
 
-Refer to function definition `thresholdHLS(image, s_thresh=(130, 255), sx_thresh=(40, 100))` for details.
+binaryImage = thresholdHLS(undistortedRoad, s_thresh=(135, 255), sx_thresh=(10, 225))
+(2) Apply sobel derivative in x direction to look for only vertical lane lines in the image
+(3) Applied threshold to the saturation component of the image and combined the 2 to create a binary output.
 
-I would describe my implementation as minimal, but it still robus to identify the lane pixels in the test images.
+I would describe my implementation as minimal, but it still robust to identify the lane pixels in the test images.
 
-Testing this function out with the the challenge video images, it's clear that some further work here needs to be done especially when there is a gradient between the "road" and variable lighting conditions. I will have to explore thresholding on the L channel also and combining it with teh sobel thresholding.
+Testing this function out with the the challenge video images, it's clear that some further work here needs to be done especially when there is a gradient between the "road" and variable lighting conditions. I will have to explore thresholding on the L channel also and combining it with the sobel thresholding.
 
-The algorithm was effective for the test images.
-![BinaryImage]: ./output_images/BinaryImage.jpg "Binary Road Images"
+The algorithm was effective for the test images and I also tried this with frames in the challenge videos.
+![thresholding][thresholding]
 
-The algorithm was not effective for the challenge images.
-![challengeBinary_NOK1]: ./output_images/challengeBinary_NOK1.jpg "NOK Challenge Road Image 1"
-![challengeBinary_NOK2]: ./output_images/challengeBinary_NOK2.jpg "NOK Challenge Road Image 2"
-
-![alt text][image3]
+The algorithm could be improved for challenge images.
+![challenge_frames] [challenge_frames]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
@@ -105,30 +110,18 @@ I opted for the top vertices to be under the horizon and allow enough margin aro
 
 However this was not robust for the challenge video.  There was more curvature,  elevation in the road, and the vehicle was in an outer lane. So I will need to look my source point definition and decide whether this should be fixed. 
 
-I chose to hardcode the source and destination points as below:
 
-`src = np.float32([    
-    [585, 455],[705, 455], [1130, 720], [190, 720]
-])
+I defined the distortion transform to include neighbouring lanes.  
+![perspective_transform_src][perspective_transform_src]
 
-pixel_offset = 190   
-nx = img.shape[1]
-ny = img.shape[0]
+`src = np.float32([[595,451], [684,451], [1045,680] , [262,680])`
+`dst = np.float32([ [405, 0], [850 - 5, 0], [850, 720], [404, 720]])`
 
-print(nx)
-print(ny)
+![warped_image][warped_image].
 
-dst = np.float32([
-    [pixel_offset, 0],
-    [nx - pixel_offset, 0],
-    [nx -  pixel_offset, ny], 
-    [pixel_offset, ny] 
-])`
+This was done with the intent to reduce level of distortion on pixels in the distance / horizon region and made the line pixel search algo more effective.  
 
-
-![Birds_eye.jpg]: ./output_images/Birds_eye.jpg "Birds Eye Transform"
-
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.  
 
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
@@ -137,20 +130,32 @@ I followed the logic outlined in the course, and that was to segment the image i
 
 Refer to `find_lane_pixels(binary_warped):` and ` def fit_polynomial(binary_warped):` in `CARND-Advanced_Lane_Lines.ipyn` notebook.
 
-[lane_lines_poly.jpg]: ./output_images/lane_lines_poly.jpg "Left and Right Lane Line polynomial fitting" 
+![lane_lines_poly][lane_lines_poly]
+![find_lane_pixels_histogram][find_lane_pixels_histogram]
 
 I explored different implementations here (refer to `def find_window_centroids(image, window_width, window_height, window_margin):` and 
 `def search_around_poly(binary_warped):` functions in line 118 and line 122.
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+Refer to `def measure_curvature_real(left_fit, right_fit, image_width, image_height) :`
+Refer to 'https://www.intmath.com/applications-differentiation/8-radius-curvature.php'
+
+The calculations were converted to meters.
+`ym_per_pix =30./720  `
+`xm_per_pix = 3.5/417` The U.S lane width regulation is upto 3.7m  I measured the pixel distance from left and right lines to be 417pixels.
+
+![lane_lines_poly][lane_lines_poly]
+
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+Refer to `def draw_lane(original_img, binary_img, l_fit, r_fit, Minv):` and `def draw_data(original_img, curv_rad, centre_offset):`
 
-![alt text][image6]
+
+Note this time I used the inverse matrix `Minv` to transform the image back to the road image view.
+
+![annotated_unwarped_road][annotated_unwarped_road.jpg]
 
 ---
 
@@ -158,12 +163,21 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a link to the output video [project_video_out](./project_video_out.mp4)
 
----
 
 ### Discussion
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+
+ - Need a more robust filter for the lane line detection.  
+ - I attempted to stack up multiple binary filters.  First I was stripping slowly different features and returning a masked image to the next binary filter -> and so forth.
+
+- I invisiged implementing an adaptive filter that would segment the "road" and the lines (something simlar to a "white balance" filter but for "road image".
+
+- The adaptive filter would use ROI on "road" areas and return data such as road HLS range (this would be a helper function for road "image stats" where min, high average outliers etc would be returned. These stats would be used as an input for "adaptive threshold"
+- The ROI may be line segments across the "road area" - with origin to the horizon, and also horizontal lines across various horizontal planes.
+- would use these as flags for high variance frames where white/dark washing of image segments may be occuring due to lighting conditions.
+
+I also had an idea of using the perpsective transform to to warp line ROIs to the birds eye view and pair them.  Pixels in the y-axis would be plausible lane pixels if they were the correct 3.5-3.7 meters distance apart. This could be added in for robustness of the fit-polynomial function.
